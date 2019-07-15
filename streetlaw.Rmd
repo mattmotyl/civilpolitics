@@ -1,0 +1,1028 @@
+---
+title: "StreetLaw Summary"
+author: "Matt Motyl, CivilPolitics.org"
+date: "July 15, 2019"
+output:
+  html_document: 
+  toc: yes
+toc_float: true
+toc_depth: '4'
+theme: simplex
+---
+  <script>
+  $(document).ready(function() {
+    $head = $('#header');
+    $head.prepend('<center><img src=\"cplogo.png\" style=\"width: 400px;\"/><br><br><br></center>')
+  });
+</script>
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, fig.width=16, fig.height=12)
+```
+
+```{r directory, echo=FALSE, warning=FALSE, include=FALSE}
+library(data.table)
+library(dplyr)
+library(tidyr)
+library(plotrix)
+library(lsr)
+
+# load data
+dat<-read.csv("dat/streetlaw.csv")
+
+#drop irrelevant columns
+dat1<-dat[,c(7,10:26)]
+
+#rename columns to fit with other analyses in related CP project to enhance comparability across grantees
+setnames(dat1,old=c("lastupdated",
+                    "om1",
+                    "om2",
+                    "sl1",
+                    "sl2",
+                   "sl3",
+                   "sl4",
+                    "topic",
+                   "numcompleted",
+                   "teacher",
+                    "typedelib",
+                    "uniqueid",
+                   "pips1",
+                    "pips2",
+                    "pips3",
+                    "pips4",
+                   "similar",
+                    "pips5"), 
+         new=c("lastupdated",
+                "disconfirm_like",
+                "opinion_question",
+                "perspective_gen",
+                "perspective_com",
+                "others_talk",
+                "others_understand",
+                "topic",
+                "numcompleted",
+                "teacher",
+                "typedelib",
+                "uniqueid",
+                "others_good",
+                "others_friend",
+                "others_smart",
+                "others_respect",
+                "talk_similar",
+                "similar_smart"))
+#old.names1<-names(dat)
+#new.names1<-paste(old.names1,"_pre", sep="")
+#names(dat)<-new.names1
+
+
+
+#old.names2<-names(dat2)
+#new.names2<-paste(old.names2,"_post", sep = "")
+#names(dat2)<-new.names2
+
+#keep.names<-c("lastupdated",
+#              "disconfirm_like",
+#              "opinion_question",
+#              "perspective_gen",
+#              "perspective_com",
+#              "others_talk",
+#              "others_understand",
+#              "topic",
+#              "numcompleted",
+#              "teacher",
+#              "typedelib",
+#              "uniqueid",
+#              "others_good",
+#              "others_friend",
+#              "others_smart",
+#              "others_respect",
+#              "talk_similar",
+#              "similar_smart")
+#
+#dat2<-dat1[,keep.names]
+
+# convert unique id to all lower case, remove blank spaces
+dat1$uniqueid<-tolower(dat1$uniqueid)
+dat1$uniqueid<-gsub(" ", "", dat1$uniqueid, fixed = TRUE)
+
+# identify whether people completed surveys multiple times
+repeaters<-as.data.frame(table(dat1$uniqueid))
+# check distribution
+table(repeaters$Freq)
+#figure out what that 83 is all about
+repeaters[repeaters$Freq=="83",]$Var1
+# there are 83 instances where participants did not enter an id
+
+repeaters.2<-repeaters[repeaters$Freq==2,]
+repeaters.3<-repeaters[repeaters$Freq==3,]
+
+dat1<-dat1[dat1$uniqueid %in% repeaters$Var1,]
+#dat<-dat[!dat$topic=="NULL",]
+#dat<-dat[!dat$teacher=="NULL",]
+#dat<-dat[!dat$typedelib=="NULL",]
+#dat$topic[141]
+library(dplyr)
+library(tidyr)
+dat2<-dat1 %>%
+  group_by(uniqueid) %>%
+  mutate(treatment= ifelse(lastupdated==max(lastupdated), "post","pre"))
+dat2$topic<-factor(dat2$topic, levels=c(1,2,3,4,5,6,7,8),
+                  labels = c("Compulsory Voting",
+                             "Fracking",
+                             "Assault Weapons",
+                             "Hate Speech",
+                             "Immigration",
+                             "Juvenile Offense",
+                             "Military",
+                             "Minimum Wage"))
+dat2$teacher<-factor(dat2$teacher,levels=c(1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26), labels =c("Bach","Bergstrom","Betzold","Brown","Bull","Burgett","Christenson","Dittmer","Edson","Goldberg","Hamilton","Howard","Jones-Wagy","Kelly","Livieratos","Lorenz","McVay","Putsche", "Romeyn","Seabreeze","Singhal","Stowe","Toth","Tunning","Vasek","Williams"))
+
+omaha<-c("Betzold", "Dittmer", "Howard", "McKay", "Stowe", "Toth", "Tunning", "Vasek")
+dmv<-c("Bach", "Burgett", "Goldberg", "Kelly", "Livieratos", "Romeyn", "Seabreeze", "Singhal", "Williams")
+denver<-c("Bergstrom", "Brown", "Bull", "Christenson", "Edson", "Hamilton", "Wagy-Jones", "Lorenz", "Putsche")
+
+locationator<-function(x){ifelse(x %in% omaha==T, "Omaha", ifelse(x %in% dmv==T, "DMV", "Denver"))}
+dat2$location<-locationator(dat2$teacher)
+dat2$typedelib<-factor(dat2$typedelib, levels = c(1,2,3), labels=c("Community - Student",
+                                                                "Community - Nonstudent",
+                                                                "Classroom"))
+# prep data for analyses comparing locations over time
+dat.m<-dat2 %>%
+  group_by(treatment, location) %>%
+  gather(Question, Score, c(disconfirm_like:others_understand,others_good:similar_smart))
+dat.m2<-as.data.frame(dat.m)
+dat.m2$Score<-as.numeric(dat.m2$Score)
+
+# prep data for analyses comparing types of deliberation over time
+dat.m3<-dat2 %>%
+  group_by(treatment, typedelib) %>%
+  gather(Question, Score, c(disconfirm_like:others_understand,others_good:similar_smart))
+dat.m3<-as.data.frame(dat.m3)
+dat.m3$Score<-as.numeric(dat.m3$Score)  
+
+# prep data for analyses comparing topics over time  
+dat.m4<-dat2 %>%
+  group_by(treatment, topic) %>%
+  gather(Question, Score, c(disconfirm_like:others_understand,others_good:similar_smart))
+dat.m4<-as.data.frame(dat.m4)
+dat.m4$Score<-as.numeric(dat.m4$Score)
+dat.m4<-dat.m4[dat.m4$topic=="Compulsory Voting"|dat.m4$topic=="Assault Weapons",]
+
+by.site<-dat.m2 %>%
+group_by(Question, location) %>%
+do(m_pre=as.numeric(tryCatch(t.test(Score~treatment, data=.)$estimate[2], error=function(e) NA)), m_post=as.numeric(tryCatch(t.test(Score~treatment, data=.)$estimate[1], error=function(e) NA)),
+t=as.numeric(tryCatch(t.test(Score~treatment, data=.)$statistic, error=function(e) NA)),
+p=as.numeric(tryCatch(t.test(Score~treatment, data=.)$p.value, error=function(e) NA)),
+d=as.numeric(tryCatch(cohensD(Score~treatment, data=.), error=function(e) NA)),
+se=as.numeric(tryCatch(std.error(.$Score), error=function(e) NA)))
+cols.num <- c("m_pre", "m_post","t","d","p", "se")
+by.site.nums<-as.data.frame(sapply(by.site[,cols.num], as.numeric))
+by.site.names<-as.data.frame(sapply(by.site[,c("location", "Question")], as.character))
+by.site.new<-cbind(by.site.nums, by.site.names)
+
+
+by.community<-dat.m3 %>%
+group_by(Question, typedelib) %>%
+do(m_pre=as.numeric(tryCatch(t.test(Score~treatment, data=.)$estimate[2], error=function(e) NA)), m_post=as.numeric(tryCatch(t.test(Score~treatment, data=.)$estimate[1], error=function(e) NA)),
+t=as.numeric(tryCatch(t.test(Score~treatment, data=.)$statistic, error=function(e) NA)),
+p=as.numeric(tryCatch(t.test(Score~treatment, data=.)$p.value, error=function(e) NA)),
+d=as.numeric(tryCatch(cohensD(Score~treatment, data=.), error=function(e) NA)),
+se=as.numeric(tryCatch(std.error(.$Score), error=function(e) NA)))
+cols.num <- c("m_pre", "m_post","t","d","p", "se")
+by.community.nums<-as.data.frame(sapply(by.community[,cols.num], as.numeric))
+by.community.names<-as.data.frame(sapply(by.community[,c("typedelib", "Question")], as.character))
+by.community.new<-cbind(by.community.nums, by.community.names)
+library(effsize)
+
+by.topic<-dat.m4 %>%
+group_by(Question, topic) %>%
+do(m_pre=as.numeric(tryCatch(t.test(Score~treatment, data=.)$estimate[2], error=function(e) NA)), m_post=as.numeric(tryCatch(t.test(Score~treatment, data=.)$estimate[1], error=function(e) NA)),
+t=as.numeric(tryCatch(t.test(Score~treatment, data=.)$statistic, error=function(e) NA)),
+p=as.numeric(tryCatch(t.test(Score~treatment, data=.)$p.value, error=function(e) NA)),
+d=as.numeric(tryCatch(cohensD(Score~treatment, data=.), error=function(e) NA)),
+se=as.numeric(tryCatch(std.error(.$Score), error=function(e) NA)))
+cols.num <- c("m_pre", "m_post","t","d","p", "se")
+by.topic.nums<-as.data.frame(sapply(by.topic[,cols.num], as.numeric))
+by.topic.names<-as.data.frame(sapply(by.topic[,c("topic", "Question")], as.character))
+by.topic.new<-cbind(by.topic.nums, by.topic.names)
+
+q_levels<-c("others_good",
+                    "others_friend",
+                    "others_smart",
+                    "others_respect",
+                    "similar_smart",
+                    "talk_similar",
+                    "disconfirm_like",
+                    "opinion_question",
+                    "perspective_gen",
+                    "perspective_com",
+                   "others_talk",
+                   "others_understand")
+
+q_labels<-c("Others are Good",
+"Would Friend Others",
+"Others are Smart",
+"Respect Others",
+"Similar Others Smart",
+"Like Similarity",
+"Like Disconfirming Info",
+"Question Beliefs",
+"Generation Difference",
+"Understand Beliefs",
+"Talk to Others",
+"Understand Perspective")
+library(h2o)
+by.site.new$Question<-factor(by.site.new$Question, levels=q_levels, labels=q_labels)
+by.community.new$Question<-factor(by.community.new$Question, levels=q_levels, labels=q_labels)
+by.topic.new$Question<-factor(by.topic.new$Question, levels=q_levels, labels=q_labels)
+
+### have to make it long here, get the means into one variable
+dat.graph<-by.site.new %>%
+  group_by(Question, location) %>%
+  gather(Treatment, Mean, m_pre:m_post)
+### start from here, make graph with stats for each school, before and after ###
+dat.graph<-dat.graph[!is.na(dat.graph$Mean),]
+dat.graph$Treatment<-factor(dat.graph$Treatment, levels = c("m_pre", "m_post"), labels=c("Before", "After"))
+
+dat.graph.all<-dat.graph %>%
+  group_by(Question) %>%
+  gather(Treatment, Mean)
+
+```
+
+
+
+## Key
+
+I have also included a key below as to the exact wording of the question asked in each survey. Some schools asked different combinations of questions, but the wording remains the same throughout.
+
+```{r key, echo=FALSE, warning=FALSE}
+q_wording<-c("People who hold different views on controversial issues are generally just as good as people who hold similar views as me.", "If I learn that someone holds different controversial views than I do, I become less interested in being friends with him/her.", "Intelligent people may hold different views from me.", "I respect people who disagree with my views.", "Generally, intelligent people hold similar views as mine.", "I strongly prefer talking with people who share my views on controversial issues than people who do not share my views.", "I like finding out new information that differs what I already think is true.", "I question my own opinions, positions, and viewpoints because they could be wrong.", "People born in a different generation provide important perspectives on controversial topics.", "I feel like I understand better why someone holds different beliefs on the controversial issue after communicating with them.", "I am interested in talking about controversial issues with people who hold different beliefs from me.", "After talking to people with different beliefs on controversial issues, I understand their perspective better.")
+
+key.df<-as.data.frame(q_wording)
+
+rownames(key.df)<-q_labels
+names(key.df)<-"Question Wording"
+library(kableExtra)
+key.df %>%
+  kable(digits=3) %>%
+  kable_styling()
+
+```
+
+## Overall Results
+
+Below we have the results for each question aggregated over all sites. We also have descriptive statistics for these questions as well as the overall ideological distribution of the sample. 
+
+```{r plot, echo=FALSE, warning=FALSE}
+library(effsize)
+by.college.big<-dat.m2 %>%
+group_by(Question) %>%
+do(m_pre=as.numeric(tryCatch(t.test(Score~treatment, data=.)$estimate[2], error=function(e) NA)), m_post=as.numeric(tryCatch(t.test(Score~treatment, data=.)$estimate[1], error=function(e) NA)),
+t=as.numeric(tryCatch(t.test(Score~treatment, data=.)$statistic, error=function(e) NA)),
+p=as.numeric(tryCatch(t.test(Score~treatment, data=.)$p.value, error=function(e) NA)),
+d=as.numeric(tryCatch(cohensD(Score~treatment, data=.), error=function(e) NA)),
+se=as.numeric(tryCatch(std.error(.$Score), error=function(e) NA)))
+cols.num <- c("m_pre", "m_post","t","d","p", "se")
+by.college.nums<-as.data.frame(sapply(by.college.big[,cols.num], as.numeric))
+by.college.names<-as.data.frame(sapply(by.college.big[,c("Question")], as.character))
+by.college.newest<-cbind(by.college.nums, by.college.names)
+by.college.newest$Question<-factor(by.college.newest$Question, levels=q_levels, labels=q_labels)
+
+dat.graph.all<-by.college.newest %>%
+  group_by(Question) %>%
+  gather(Treatment, Mean, m_pre:m_post)
+dat.graph.all<-dat.graph.all[!is.na(dat.graph.all$Mean),]
+dat.graph.all$Treatment<-factor(dat.graph.all$Treatment, levels = c("m_pre", "m_post"), labels=c("Before", "After"))
+
+library(ggplot2)
+names1<-c("Others are Good","Would Friend Others", "Others are Smart","Respect Others","Similar Others Smart","Like Similarity")
+plot0<-ggplot(dat.graph.all[dat.graph.all$Question %in% names1,], aes(x=Treatment, y=Mean, fill=Treatment)) +
+facet_grid(.~Question)+
+geom_bar(position=position_dodge(), stat="identity") +
+geom_errorbar(aes(ymin=Mean-se, ymax=Mean+se),
+width=.2,                    # Width of the error bars
+position=position_dodge(.9))+
+scale_x_discrete(name="Before or After Event")+
+ylab("Score")+
+coord_cartesian(ylim = c(1, 100))+
+scale_fill_manual(name="Before or After Event", values=c("green4", "purple4"))+
+theme(text=element_text(size=16), panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+panel.background = element_blank(), axis.line = element_line(colour = "black"))+
+  scale_y_continuous(expand = c(0, 0), limits = c(0, 100)) 
+
+plot0
+
+names2<-c("Like Disconfirming Info","Question Beliefs","Generation Difference", "Understand Beliefs","Talk to Others","Understand Perspective")
+
+
+plot1<-ggplot(dat.graph.all[dat.graph.all$Question %in% names2,], aes(x=Treatment, y=Mean, fill=Treatment)) +
+facet_grid(.~Question)+
+geom_bar(position=position_dodge(), stat="identity") +
+geom_errorbar(aes(ymin=Mean-se, ymax=Mean+se),
+width=.2,                    # Width of the error bars
+position=position_dodge(.9))+
+scale_x_discrete(name="Before or After Event")+
+ylab("Score")+
+coord_cartesian(ylim = c(1, 100))+
+scale_fill_manual(name="Before or After Event", values=c("green4", "purple4"))+
+theme(text=element_text(size=16), panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+panel.background = element_blank(), axis.line = element_line(colour = "black"))+
+  scale_y_continuous(expand = c(0, 0), limits = c(0, 100)) 
+
+plot1
+
+```
+
+Overall, the belief that "people who hold different views on controversial issues are generally just as good as people who hold similar views as me" increased post event. There were no other significant differences after the event. 
+
+```{r table, echo=FALSE, warning=FALSE}
+
+by.college.newest$mygroup<-NULL
+rownames(by.college.newest)<-by.college.newest$Question
+by.college.newest$Question<-NULL
+names(by.college.newest)<-c("Pre Score", "Post Score", "T-value", "Effect Size (D)", "P-value", "Standard Error")
+by.college.newest$Effect<-ifelse(by.college.newest$`P-value` < .05, "Yes", "No")
+
+library(kableExtra)
+by.college.newest %>%
+  kable(digits=3) %>%
+  kable_styling()
+#rownames(dat.jmu)<-dat.jmu$Question
+```
+
+
+
+## Results by Region {.tabset .tabset-fade}
+
+I broke down the results of each event by location of the event. Each section will be presented: 
+
+- graphically, showing the change in response to each applicable question
+- descriptively, showing the means and standard deviations for each question
+
+
+*Press [Key] to return to the Question Key.
+
+```{r location, echo=F, warning=F}
+dat.table<-dat.m %>%
+  group_by(Question, location, treatment) %>%
+  summarise(n=n())
+dat.table$treatment<-factor(dat.table$treatment, levels=c("pre","post"), labels = c("Pre", "Post"))
+
+#dat.table<-dat.table %>%
+  #group_by(Question) %>%
+  #spread(., location, n)
+#dat.table<-dat.table[-4,] # null snuck in
+
+dat.table<-dat.table %>%
+  unite(temp, location, treatment) %>%
+  spread(temp, n)
+dat.table<-dat.table[,c("Question","Denver_Pre", "Denver_Post", "DMV_Pre","DMV_Post","Omaha_Pre", "Omaha_Post")]
+
+#rownames(dat.table)<-dat.table$Question
+labels<-c("Like Disconfirming Info",
+            "Question Beliefs",
+            "Would Friend Others",
+            "Others are Good",
+            "Respect Others",
+            "Others are Smart",
+            "Talk to Others",
+            "Understand Beliefs",
+            "Understand Perspective",
+            "Generation Difference",
+            "Like Similarity",
+            "Similar Others Smart")
+rownames(dat.table)<-labels
+dat.table$Question<-NULL
+names(dat.table)<-c("Denver (Pre)", "Denver (Post)", "DMV (Pre)","DMV (Post)","Number of Omaha (Pre)", "Omaha (Post)")
+dat.table<-dat.table[1,c("Denver (Post)","DMV (Post)","Omaha (Post)")]
+dat.table<-t(dat.table)
+colnames(dat.table)<-"Surveys Collected"
+```
+
+```{r site, echo=FALSE, warning=FALSE}
+
+library(kableExtra)
+dat.table %>%
+  kable(digits=3) %>%
+  kable_styling()
+#rownames(dat.jmu)<-dat.jmu$Question
+```
+
+### OMAHA
+```{r OMAHAlot, echo=FALSE, warning=FALSE}
+#### to label our facets ####
+dat.graph.omaha<-subset(dat.graph, location=="Omaha")
+
+
+names1<-c("Others are Good","Would Friend Others", "Others are Smart","Respect Others","Similar Others Smart","Like Similarity")
+plot0<-ggplot(dat.graph.omaha[dat.graph.omaha$Question %in% names1,], aes(x=Treatment, y=Mean, fill=Treatment)) +
+facet_grid(.~Question)+
+geom_bar(position=position_dodge(), stat="identity") +
+geom_errorbar(aes(ymin=Mean-se, ymax=Mean+se),
+width=.2,                    # Width of the error bars
+position=position_dodge(.9))+
+scale_x_discrete(name="Before or After Event")+
+ylab("Score")+
+coord_cartesian(ylim = c(1, 100))+
+scale_fill_manual(name="Before or After Event", values=c("green4", "purple4"))+
+theme(text=element_text(size=16), panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+panel.background = element_blank(), axis.line = element_line(colour = "black"))+
+  scale_y_continuous(expand = c(0, 0), limits = c(0, 100)) 
+
+plot0
+
+names2<-c("Like Disconfirming Info","Question Beliefs","Generation Difference", "Understand Beliefs","Talk to Others","Understand Perspective")
+
+
+plot1<-ggplot(dat.graph.all[dat.graph.all$Question %in% names2,], aes(x=Treatment, y=Mean, fill=Treatment)) +
+facet_grid(.~Question)+
+geom_bar(position=position_dodge(), stat="identity") +
+geom_errorbar(aes(ymin=Mean-se, ymax=Mean+se),
+width=.2,                    # Width of the error bars
+position=position_dodge(.9))+
+scale_x_discrete(name="Before or After Event")+
+ylab("Score")+
+coord_cartesian(ylim = c(1, 100))+
+scale_fill_manual(name="Before or After Event", values=c("green4", "purple4"))+
+theme(text=element_text(size=16), panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+panel.background = element_blank(), axis.line = element_line(colour = "black"))+
+  scale_y_continuous(expand = c(0, 0), limits = c(0, 100)) 
+
+plot1
+```
+
+In the table below, we see that there were no pre-post differences in any of our measures.  
+
+```{r OMAHAtable, echo=FALSE, warning=FALSE}
+
+dat.omaha<-subset(by.site.new, location=="Omaha")
+dat.omaha<-dat.omaha[!is.na(dat.omaha$m_pre),]
+dat.omaha$location<-NULL
+rownames(dat.omaha)<-dat.omaha$Question
+dat.omaha$Question<-NULL
+names(dat.omaha)<-c("Pre Score", "Post Score", "T-value", "Effect Size (D)", "P-value", "Standard Error")
+dat.omaha$Effect<-ifelse(dat.omaha$`P-value` < .05, "Yes", "No")
+
+library(kableExtra)
+dat.omaha %>%
+  kable(digits=3) %>%
+  kable_styling()
+#rownames(dat.jmu)<-dat.jmu$Question
+```
+
+
+
+### DMV
+
+```{r DMVplot, echo=FALSE, warning=FALSE}
+#### to label our facets ####
+dat.graph.dmv<-subset(dat.graph, location=="DMV")
+
+
+names1<-c("Others are Good","Would Friend Others", "Others are Smart","Respect Others","Similar Others Smart","Like Similarity")
+plot0<-ggplot(dat.graph.dmv[dat.graph.dmv$Question %in% names1,], aes(x=Treatment, y=Mean, fill=Treatment)) +
+facet_grid(.~Question)+
+geom_bar(position=position_dodge(), stat="identity") +
+geom_errorbar(aes(ymin=Mean-se, ymax=Mean+se),
+width=.2,                    # Width of the error bars
+position=position_dodge(.9))+
+scale_x_discrete(name="Before or After Event")+
+ylab("Score")+
+coord_cartesian(ylim = c(1, 100))+
+scale_fill_manual(name="Before or After Event", values=c("green4", "purple4"))+
+theme(text=element_text(size=16), panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+panel.background = element_blank(), axis.line = element_line(colour = "black"))+
+  scale_y_continuous(expand = c(0, 0), limits = c(0, 100)) 
+
+plot0
+
+names2<-c("Dislike Confirmation","Question Beliefs","Generation Difference", "Understand Beliefs","Talk to Others","Understand Perspective")
+
+
+plot1<-ggplot(dat.graph.dmv[dat.graph.dmv$Question %in% names2,], aes(x=Treatment, y=Mean, fill=Treatment)) +
+facet_grid(.~Question)+
+geom_bar(position=position_dodge(), stat="identity") +
+geom_errorbar(aes(ymin=Mean-se, ymax=Mean+se),
+width=.2,                    # Width of the error bars
+position=position_dodge(.9))+
+scale_x_discrete(name="Before or After Event")+
+ylab("Score")+
+coord_cartesian(ylim = c(1, 100))+
+scale_fill_manual(name="Before or After Event", values=c("green4", "purple4"))+
+theme(text=element_text(size=16), panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+panel.background = element_blank(), axis.line = element_line(colour = "black"))+
+  scale_y_continuous(expand = c(0, 0), limits = c(0, 100)) 
+
+plot1
+```
+
+In the table below, we see that the belief that "people who hold different views on controversial issues are generally just as good as people who hold similar views as me" significantly increased from Time 1 to Time 2. 
+
+```{r DMVtable, echo=FALSE, warning=FALSE}
+
+dat.dmv<-subset(by.site.new, location=="DMV")
+dat.dmv<-dat.dmv[!is.na(dat.dmv$m_pre),]
+dat.dmv$location<-NULL
+rownames(dat.dmv)<-dat.dmv$Question
+dat.dmv$Question<-NULL
+names(dat.dmv)<-c("Pre Score", "Post Score", "T-value", "Effect Size (D)", "P-value", "Standard Error")
+dat.dmv$Effect<-ifelse(dat.dmv$`P-value` < .05, "Yes", "No")
+
+library(kableExtra)
+dat.dmv %>%
+  kable(digits=3) %>%
+  kable_styling()
+#rownames(dat.jmu)<-dat.jmu$Question
+```
+
+
+
+
+### DENVER
+```{r denplot, echo=FALSE, warning=FALSE}
+#### to label our facets ####
+dat.graph.denver<-subset(dat.graph, location=="Denver")
+
+
+names1<-c("Others are Good","Would Friend Others", "Others are Smart","Respect Others","Similar Others Smart","Like Similarity")
+plot0<-ggplot(dat.graph.denver[dat.graph.denver$Question %in% names1,], aes(x=Treatment, y=Mean, fill=Treatment)) +
+facet_grid(.~Question)+
+geom_bar(position=position_dodge(), stat="identity") +
+geom_errorbar(aes(ymin=Mean-se, ymax=Mean+se),
+width=.2,                    # Width of the error bars
+position=position_dodge(.9))+
+scale_x_discrete(name="Before or After Event")+
+ylab("Score")+
+coord_cartesian(ylim = c(1, 100))+
+scale_fill_manual(name="Before or After Event", values=c("green4", "purple4"))+
+theme(text=element_text(size=16), panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+panel.background = element_blank(), axis.line = element_line(colour = "black"))+
+  scale_y_continuous(expand = c(0, 0), limits = c(0, 100)) 
+
+plot0
+
+names2<-c("Dislike Confirmation","Question Beliefs","Generation Difference", "Understand Beliefs","Talk to Others","Understand Perspective")
+
+
+plot1<-ggplot(dat.graph.denver[dat.graph.denver$Question %in% names2,], aes(x=Treatment, y=Mean, fill=Treatment)) +
+facet_grid(.~Question)+
+geom_bar(position=position_dodge(), stat="identity") +
+geom_errorbar(aes(ymin=Mean-se, ymax=Mean+se),
+width=.2,                    # Width of the error bars
+position=position_dodge(.9))+
+scale_x_discrete(name="Before or After Event")+
+ylab("Score")+
+coord_cartesian(ylim = c(1, 100))+
+scale_fill_manual(name="Before or After Event", values=c("green4", "purple4"))+
+theme(text=element_text(size=16), panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+panel.background = element_blank(), axis.line = element_line(colour = "black"))+
+  scale_y_continuous(expand = c(0, 0), limits = c(0, 100)) 
+
+plot1
+```
+
+In the table below, we see that the belief that "people who hold different views on controversial issues are generally just as good as people who hold similar views as me" significantly increased from Time 1 to Time 2.
+
+```{r dentable, echo=FALSE, warning=FALSE}
+
+dat.denver<-subset(by.site.new, location=="Denver")
+dat.denver<-dat.denver[!is.na(dat.denver$m_pre),]
+dat.denver$location<-NULL
+rownames(dat.denver)<-dat.denver$Question
+dat.denver$Question<-NULL
+names(dat.denver)<-c("Pre Score", "Post Score", "T-value", "Effect Size (D)", "P-value", "Standard Error")
+dat.denver$Effect<-ifelse(dat.denver$`P-value` < .05, "Yes", "No")
+
+library(kableExtra)
+dat.denver %>%
+  kable(digits=3) %>%
+  kable_styling()
+#rownames(dat.jmu)<-dat.jmu$Question
+```
+
+## Results by Community Level {.tabset .tabset-fade}
+
+I broke down the results of each event by location of the event. Each section will be presented: 
+
+- graphically, showing the change in response to each applicable question
+- descriptively, showing the means and standard deviations for each question
+
+
+*Press [Key] to return to the Question Key.
+
+```{r community, echo=FALSE, warning=FALSE}
+dat.graph<-by.community.new %>%
+  group_by(Question, typedelib) %>%
+  gather(Treatment, Mean, m_pre:m_post)
+### start from here, make graph with stats for each school, before and after ###
+dat.graph<-dat.graph[!is.na(dat.graph$Mean),]
+dat.graph$Treatment<-factor(dat.graph$Treatment, levels = c("m_pre", "m_post"), labels=c("Before", "After"))
+
+dat.graph.all<-dat.graph %>%
+  group_by(Question) %>%
+  gather(Treatment, Mean)
+
+
+dat.table<-dat.m3 %>%
+  group_by(Question, typedelib, treatment) %>%
+  summarise(n=n())
+dat.table$treatment<-factor(dat.table$treatment, levels=c("pre","post"), labels = c("Pre", "Post"))
+
+#dat.table<-dat.table %>%
+  #group_by(Question) %>%
+  #spread(., location, n)
+#dat.table<-dat.table[-4,] # null snuck in
+
+dat.table<-dat.table %>%
+  unite(temp, typedelib, treatment) %>%
+  spread(temp, n)
+dat.table<-dat.table[,c("Question","Classroom_Pre", "Classroom_Post", "Community - Nonstudent_Pre","Community - Nonstudent_Post","Community - Student_Pre", "Community - Student_Post")]
+
+#rownames(dat.table)<-dat.table$Question
+
+
+dat.table$Question<-NULL
+names(dat.table)<-c("Classroomn (Pre)", "Classroom (Post)", "Community - Nonstudent (Pre)","Community - Nonstudent (Post)","Community - Student (Pre)", "Community - Student(Post)")
+dat.table<-dat.table[1,c("Classroom (Post)", "Community - Nonstudent (Post)","Community - Student(Post)")]
+dat.table<-t(dat.table)
+colnames(dat.table)<-"Surveys Collected"
+```
+
+
+In the table below we have the number of respondents for which we have pre and post event data by area.
+
+```{r survbreakdown, echo=FALSE, warning=FALSE}
+
+library(kableExtra)
+dat.table %>%
+  kable(digits=3) %>%
+  kable_styling()
+#rownames(dat.jmu)<-dat.jmu$Question
+```
+
+### CLASSROOM
+```{r classplot, echo=FALSE, warning=FALSE}
+dat.graph.class<-subset(dat.graph, typedelib=="Classroom")
+
+
+names1<-c("Others are Good","Would Friend Others", "Others are Smart","Respect Others","Similar Others Smart","Like Similarity")
+plot0<-ggplot(dat.graph.class[dat.graph.class$Question %in% names1,], aes(x=Treatment, y=Mean, fill=Treatment)) +
+facet_grid(.~Question)+
+geom_bar(position=position_dodge(), stat="identity") +
+geom_errorbar(aes(ymin=Mean-se, ymax=Mean+se),
+width=.2,                    # Width of the error bars
+position=position_dodge(.9))+
+scale_x_discrete(name="Before or After Event")+
+ylab("Score")+
+coord_cartesian(ylim = c(1, 100))+
+scale_fill_manual(name="Before or After Event", values=c("green4", "purple4"))+
+theme(text=element_text(size=16), panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+panel.background = element_blank(), axis.line = element_line(colour = "black"))+
+  scale_y_continuous(expand = c(0, 0), limits = c(0, 100)) 
+
+plot0
+
+names2<-c("Dislike Confirmation","Question Beliefs","Generation Difference", "Understand Beliefs","Talk to Others","Understand Perspective")
+
+
+plot1<-ggplot(dat.graph.class[dat.graph.class$Question %in% names2,], aes(x=Treatment, y=Mean, fill=Treatment)) +
+facet_grid(.~Question)+
+geom_bar(position=position_dodge(), stat="identity") +
+geom_errorbar(aes(ymin=Mean-se, ymax=Mean+se),
+width=.2,                    # Width of the error bars
+position=position_dodge(.9))+
+scale_x_discrete(name="Before or After Event")+
+ylab("Score")+
+coord_cartesian(ylim = c(1, 100))+
+scale_fill_manual(name="Before or After Event", values=c("green4", "purple4"))+
+theme(text=element_text(size=16), panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+panel.background = element_blank(), axis.line = element_line(colour = "black"))+
+  scale_y_continuous(expand = c(0, 0), limits = c(0, 100)) 
+
+plot1
+```
+
+In the table below, we see that the belief that "people who hold different views on controversial issues are generally just as good as people who hold similar views as me" significantly increased from Time 1 to Time 2. 
+
+```{r classtable, echo=FALSE, warning=FALSE}
+
+dat.class<-subset(by.community.new, typedelib=="Classroom")
+dat.class<-dat.class[!is.na(dat.class$m_pre),]
+dat.class$typedelib<-NULL
+rownames(dat.class)<-dat.class$Question
+dat.class$Question<-NULL
+names(dat.class)<-c("Pre Score", "Post Score", "T-value", "Effect Size (D)", "P-value", "Standard Error")
+dat.class$Effect<-ifelse(dat.class$`P-value` < .05, "Yes", "No")
+
+library(kableExtra)
+dat.class %>%
+  kable(digits=3) %>%
+  kable_styling()
+#rownames(dat.jmu)<-dat.jmu$Question
+```
+
+### COMMUNITY - STUDENT
+```{r studplot, echo=FALSE, warning=FALSE}
+dat.graph.student<-subset(dat.graph, typedelib=="Community - Student")
+
+
+names1<-c("Others are Good","Would Friend Others", "Others are Smart","Respect Others","Similar Others Smart","Like Similarity")
+plot0<-ggplot(dat.graph.student[dat.graph.student$Question %in% names1,], aes(x=Treatment, y=Mean, fill=Treatment)) +
+facet_grid(.~Question)+
+geom_bar(position=position_dodge(), stat="identity") +
+geom_errorbar(aes(ymin=Mean-se, ymax=Mean+se),
+width=.2,                    # Width of the error bars
+position=position_dodge(.9))+
+scale_x_discrete(name="Before or After Event")+
+ylab("Score")+
+coord_cartesian(ylim = c(1, 100))+
+scale_fill_manual(name="Before or After Event", values=c("green4", "purple4"))+
+theme(text=element_text(size=16), panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+panel.background = element_blank(), axis.line = element_line(colour = "black"))+
+  scale_y_continuous(expand = c(0, 0), limits = c(0, 100)) 
+
+plot0
+
+names2<-c("Dislike Confirmation","Question Beliefs","Generation Difference", "Understand Beliefs","Talk to Others","Understand Perspective")
+
+
+plot1<-ggplot(dat.graph.student[dat.graph.student$Question %in% names2,], aes(x=Treatment, y=Mean, fill=Treatment)) +
+facet_grid(.~Question)+
+geom_bar(position=position_dodge(), stat="identity") +
+geom_errorbar(aes(ymin=Mean-se, ymax=Mean+se),
+width=.2,                    # Width of the error bars
+position=position_dodge(.9))+
+scale_x_discrete(name="Before or After Event")+
+ylab("Score")+
+coord_cartesian(ylim = c(1, 100))+
+scale_fill_manual(name="Before or After Event", values=c("green4", "purple4"))+
+theme(text=element_text(size=16), panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+panel.background = element_blank(), axis.line = element_line(colour = "black"))+
+  scale_y_continuous(expand = c(0, 0), limits = c(0, 100)) 
+
+plot1
+```
+
+In the table below, we see that there were no pre-post differences in any of our measures. 
+
+```{r studtable, echo=FALSE, warning=FALSE}
+
+dat.student<-subset(by.community.new, typedelib=="Community - Student")
+dat.student<-dat.student[!is.na(dat.student$m_pre),]
+dat.student$typedelib<-NULL
+rownames(dat.student)<-dat.student$Question
+dat.student$Question<-NULL
+names(dat.student)<-c("Pre Score", "Post Score", "T-value", "Effect Size (D)", "P-value", "Standard Error")
+dat.student$Effect<-ifelse(dat.student$`P-value` < .05, "Yes", "No")
+
+library(kableExtra)
+dat.student %>%
+  kable(digits=3) %>%
+  kable_styling()
+#rownames(dat.jmu)<-dat.jmu$Question
+```
+
+### COMMUNITY - NONSTUDENT
+```{r nonsplot, echo=FALSE, warning=FALSE}
+dat.graph.non<-subset(dat.graph, typedelib=="Community - Nonstudent")
+
+
+names1<-c("Others are Good","Would Friend Others", "Others are Smart","Respect Others","Similar Others Smart","Like Similarity")
+plot0<-ggplot(dat.graph.non[dat.graph.non$Question %in% names1,], aes(x=Treatment, y=Mean, fill=Treatment)) +
+facet_grid(.~Question)+
+geom_bar(position=position_dodge(), stat="identity") +
+geom_errorbar(aes(ymin=Mean-se, ymax=Mean+se),
+width=.2,                    # Width of the error bars
+position=position_dodge(.9))+
+scale_x_discrete(name="Before or After Event")+
+ylab("Score")+
+coord_cartesian(ylim = c(1, 100))+
+scale_fill_manual(name="Before or After Event", values=c("green4", "purple4"))+
+theme(text=element_text(size=16), panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+panel.background = element_blank(), axis.line = element_line(colour = "black"))+
+  scale_y_continuous(expand = c(0, 0), limits = c(0, 100)) 
+
+plot0
+
+names2<-c("Dislike Confirmation","Question Beliefs","Generation Difference", "Understand Beliefs","Talk to Others","Understand Perspective")
+
+
+plot1<-ggplot(dat.graph.non[dat.graph.non$Question %in% names2,], aes(x=Treatment, y=Mean, fill=Treatment)) +
+facet_grid(.~Question)+
+geom_bar(position=position_dodge(), stat="identity") +
+geom_errorbar(aes(ymin=Mean-se, ymax=Mean+se),
+width=.2,                    # Width of the error bars
+position=position_dodge(.9))+
+scale_x_discrete(name="Before or After Event")+
+ylab("Score")+
+coord_cartesian(ylim = c(1, 100))+
+scale_fill_manual(name="Before or After Event", values=c("green4", "purple4"))+
+theme(text=element_text(size=16), panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+panel.background = element_blank(), axis.line = element_line(colour = "black"))+
+  scale_y_continuous(expand = c(0, 0), limits = c(0, 100)) 
+
+plot1
+```
+
+In the table below, we see that there were no pre-post differences in any of our measures. 
+
+```{r nonstable, echo=FALSE, warning=FALSE}
+
+dat.non<-subset(by.community.new, typedelib=="Community - Nonstudent")
+dat.non<-dat.non[!is.na(dat.non$m_pre),]
+dat.non$typedelib<-NULL
+rownames(dat.non)<-dat.non$Question
+dat.non$Question<-NULL
+names(dat.non)<-c("Pre Score", "Post Score", "T-value", "Effect Size (D)", "P-value", "Standard Error")
+dat.non$Effect<-ifelse(dat.non$`P-value` < .05, "Yes", "No")
+
+library(kableExtra)
+dat.non %>%
+  kable(digits=3) %>%
+  kable_styling()
+#rownames(dat.jmu)<-dat.jmu$Question
+```
+
+## Results by Topic {.tabset .tabset-fade}
+
+I broke down the results of each event by location of the event. Each section will be presented: 
+
+- graphically, showing the change in response to each applicable question
+- descriptively, showing the means and standard deviations for each question
+
+
+*Press [Key] to return to the Question Key.
+
+```{r topic,echo=FALSE, warning=FALSE}
+dat.graph<-by.topic.new %>%
+  group_by(Question, topic) %>%
+  gather(Treatment, Mean, m_pre:m_post)
+### start from here, make graph with stats for each school, before and after ###
+dat.graph<-dat.graph[!is.na(dat.graph$Mean),]
+dat.graph$Treatment<-factor(dat.graph$Treatment, levels = c("m_pre", "m_post"), labels=c("Before", "After"))
+
+dat.graph.all<-dat.graph %>%
+  group_by(Question) %>%
+  gather(Treatment, Mean)
+
+
+dat.table<-dat.m4 %>%
+  group_by(Question, topic, treatment) %>%
+  summarise(n=n())
+dat.table$treatment<-factor(dat.table$treatment, levels=c("pre","post"), labels = c("Pre", "Post"))
+
+#dat.table<-dat.table %>%
+  #group_by(Question) %>%
+  #spread(., location, n)
+#dat.table<-dat.table[-4,] # null snuck in
+
+dat.table<-dat.table %>%
+  unite(temp, topic, treatment) %>%
+  spread(temp, n)
+dat.table<-dat.table[,c("Question","Assault Weapons_Pre", "Assault Weapons_Post", "Compulsory Voting_Pre","Compulsory Voting_Post")]
+
+#rownames(dat.table)<-dat.table$Question
+
+
+dat.table$Question<-NULL
+names(dat.table)<-c("Assault Weapons (Pre)", "Assault Weapons (Post)", "Compulsory Voting (Pre)","Compulsory Voting (Post)")
+dat.table<-dat.table[1,c("Assault Weapons (Post)", "Compulsory Voting (Post)")]
+dat.table<-t(dat.table)
+colnames(dat.table)<-"Surveys Collected"
+```
+
+
+In the table below we have the number of respondents for which we have pre and post event data by area.
+
+```{r survbreakdowntopic, echo=FALSE, warning=FALSE}
+
+library(kableExtra)
+dat.table %>%
+  kable(digits=3) %>%
+  kable_styling()
+#rownames(dat.jmu)<-dat.jmu$Question
+```
+
+### ASSAULT WEAPONS
+```{r wepsplot, echo=FALSE, warning=FALSE}
+dat.graph.wep<-subset(dat.graph, topic=="Assault Weapons")
+
+
+names1<-c("Others are Good","Would Friend Others", "Others are Smart","Respect Others","Similar Others Smart","Like Similarity")
+plot0<-ggplot(dat.graph.wep[dat.graph.wep$Question %in% names1,], aes(x=Treatment, y=Mean, fill=Treatment)) +
+facet_grid(.~Question)+
+geom_bar(position=position_dodge(), stat="identity") +
+geom_errorbar(aes(ymin=Mean-se, ymax=Mean+se),
+width=.2,                    # Width of the error bars
+position=position_dodge(.9))+
+scale_x_discrete(name="Before or After Event")+
+ylab("Score")+
+coord_cartesian(ylim = c(1, 100))+
+scale_fill_manual(name="Before or After Event", values=c("green4", "purple4"))+
+theme(text=element_text(size=16), panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+panel.background = element_blank(), axis.line = element_line(colour = "black"))+
+  scale_y_continuous(expand = c(0, 0), limits = c(0, 100)) 
+
+plot0
+
+names2<-c("Dislike Confirmation","Question Beliefs","Generation Difference", "Understand Beliefs","Talk to Others","Understand Perspective")
+
+
+plot1<-ggplot(dat.graph.wep[dat.graph.wep$Question %in% names2,], aes(x=Treatment, y=Mean, fill=Treatment)) +
+facet_grid(.~Question)+
+geom_bar(position=position_dodge(), stat="identity") +
+geom_errorbar(aes(ymin=Mean-se, ymax=Mean+se),
+width=.2,                    # Width of the error bars
+position=position_dodge(.9))+
+scale_x_discrete(name="Before or After Event")+
+ylab("Score")+
+coord_cartesian(ylim = c(1, 100))+
+scale_fill_manual(name="Before or After Event", values=c("green4", "purple4"))+
+theme(text=element_text(size=16), panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+panel.background = element_blank(), axis.line = element_line(colour = "black"))+
+  scale_y_continuous(expand = c(0, 0), limits = c(0, 100)) 
+
+plot1
+```
+
+In the table below, we see that there were no pre-post differences in any of our measures. 
+
+```{r wepstable, echo=FALSE, warning=FALSE}
+
+dat.wep<-subset(by.topic.new, topic=="Assault Weapons")
+dat.wep<-dat.wep[!is.na(dat.wep$m_pre),]
+dat.wep$topic<-NULL
+rownames(dat.wep)<-dat.wep$Question
+dat.wep$Question<-NULL
+names(dat.wep)<-c("Pre Score", "Post Score", "T-value", "Effect Size (D)", "P-value", "Standard Error")
+dat.wep$Effect<-ifelse(dat.wep$`P-value` < .05, "Yes", "No")
+
+library(kableExtra)
+dat.wep %>%
+  kable(digits=3) %>%
+  kable_styling()
+#rownames(dat.jmu)<-dat.jmu$Question
+```
+
+### COMPULSORY VOTING
+```{r voteplot, echo=FALSE, warning=FALSE}
+dat.graph.vote<-subset(dat.graph, topic=="Compulsory Voting")
+
+
+names1<-c("Others are Good","Would Friend Others", "Others are Smart","Respect Others","Similar Others Smart","Like Similarity")
+plot0<-ggplot(dat.graph.vote[dat.graph.vote$Question %in% names1,], aes(x=Treatment, y=Mean, fill=Treatment)) +
+facet_grid(.~Question)+
+geom_bar(position=position_dodge(), stat="identity") +
+geom_errorbar(aes(ymin=Mean-se, ymax=Mean+se),
+width=.2,                    # Width of the error bars
+position=position_dodge(.9))+
+scale_x_discrete(name="Before or After Event")+
+ylab("Score")+
+coord_cartesian(ylim = c(1, 100))+
+scale_fill_manual(name="Before or After Event", values=c("green4", "purple4"))+
+theme(text=element_text(size=16), panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+panel.background = element_blank(), axis.line = element_line(colour = "black"))+
+  scale_y_continuous(expand = c(0, 0), limits = c(0, 100)) 
+
+plot0
+
+names2<-c("Dislike Confirmation","Question Beliefs","Generation Difference", "Understand Beliefs","Talk to Others","Understand Perspective")
+
+
+plot1<-ggplot(dat.graph.vote[dat.graph.vote$Question %in% names2,], aes(x=Treatment, y=Mean, fill=Treatment)) +
+facet_grid(.~Question)+
+geom_bar(position=position_dodge(), stat="identity") +
+geom_errorbar(aes(ymin=Mean-se, ymax=Mean+se),
+width=.2,                    # Width of the error bars
+position=position_dodge(.9))+
+scale_x_discrete(name="Before or After Event")+
+ylab("Score")+
+coord_cartesian(ylim = c(1, 100))+
+scale_fill_manual(name="Before or After Event", values=c("green4", "purple4"))+
+theme(text=element_text(size=16), panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+panel.background = element_blank(), axis.line = element_line(colour = "black"))+
+  scale_y_continuous(expand = c(0, 0), limits = c(0, 100)) 
+
+plot1
+```
+
+In the table below, we see that there were no pre-post differences in any of our measures. 
+
+```{r votetable, echo=FALSE, warning=FALSE}
+
+dat.vote<-subset(by.topic.new, topic=="Compulsory Voting")
+dat.vote<-dat.vote[!is.na(dat.vote$m_pre),]
+dat.vote$topic<-NULL
+rownames(dat.vote)<-dat.wep$Question
+dat.vote$Question<-NULL
+names(dat.vote)<-c("Pre Score", "Post Score", "T-value", "Effect Size (D)", "P-value", "Standard Error")
+dat.vote$Effect<-ifelse(dat.vote$`P-value` < .05, "Yes", "No")
+
+library(kableExtra)
+dat.vote %>%
+  kable(digits=3) %>%
+  kable_styling()
+#rownames(dat.jmu)<-dat.jmu$Question
+```
+
