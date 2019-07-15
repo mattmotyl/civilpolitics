@@ -1,2 +1,2 @@
-# civilpolitics-sl
+# civilpolitics
 Civil Politics
