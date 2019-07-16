@@ -3,21 +3,43 @@ title: "StreetLaw Summary"
 author: "Matt Motyl, CivilPolitics.org"
 date: "July 15, 2019"
 output:
-  html_document: 
-  toc: yes
-toc_float: true
-toc_depth: '4'
-theme: simplex
+  html_document:
+    theme: simplex
+    toc: yes
+    toc_depth: '4'
+    toc_float: yes
+  pdf_document:
+    toc: yes
+    toc_depth: '4'
 ---
-  <script>
-  $(document).ready(function() {
-    $head = $('#header');
-    $head.prepend('<center><img src=\"cplogo.png\" style=\"width: 400px;\"/><br><br><br></center>')
-  });
+<script>
+   $(document).ready(function() {
+     $head = $('#header');
+     $head.prepend('<center><img src=\"img/cplogo.png\" style=\"width: 500px;\"/></center>')
+   });
 </script>
 
+<style type="text/css">
+
+body{ /* Normal  */
+      font-size: 16px;
+
+h1.title {
+  font-size: 34px;
+  text-align: center;
+}
+h4.author { /* Header 4 - and the author and data headers use this too  */
+    font-size: 18px;
+  text-align: center;
+}
+h4.date { /* Header 4 - and the author and data headers use this too  */
+  font-size: 18px;
+  text-align: center;
+}
+</style>
+
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE, fig.width=16, fig.height=12)
+knitr::opts_chunk$set(echo = TRUE, fig.width=19, fig.height=12)
 ```
 
 ```{r directory, echo=FALSE, warning=FALSE, include=FALSE}
@@ -26,6 +48,7 @@ library(dplyr)
 library(tidyr)
 library(plotrix)
 library(lsr)
+library(kableExtra)
 
 # load data
 dat<-read.csv("dat/streetlaw.csv")
@@ -108,9 +131,10 @@ dat1$uniqueid<-gsub(" ", "", dat1$uniqueid, fixed = TRUE)
 # identify whether people completed surveys multiple times
 repeaters<-as.data.frame(table(dat1$uniqueid))
 # check distribution
-table(repeaters$Freq)
+max(table(repeaters$Freq))
+max(repeaters$Freq)
 #figure out what that 83 is all about
-repeaters[repeaters$Freq=="83",]$Var1
+repeaters[repeaters$Freq==max(repeaters$Freq),]$Var1
 # there are 83 instances where participants did not enter an id
 
 repeaters.2<-repeaters[repeaters$Freq==2,]
@@ -254,16 +278,16 @@ dat.graph.all<-dat.graph %>%
 
 ## Key
 
-I have also included a key below as to the exact wording of the question asked in each survey. Some schools asked different combinations of questions, but the wording remains the same throughout.
+Here is the question key containing the exact wording of the question asked in each survey. 
 
 ```{r key, echo=FALSE, warning=FALSE}
-q_wording<-c("People who hold different views on controversial issues are generally just as good as people who hold similar views as me.", "If I learn that someone holds different controversial views than I do, I become less interested in being friends with him/her.", "Intelligent people may hold different views from me.", "I respect people who disagree with my views.", "Generally, intelligent people hold similar views as mine.", "I strongly prefer talking with people who share my views on controversial issues than people who do not share my views.", "I like finding out new information that differs what I already think is true.", "I question my own opinions, positions, and viewpoints because they could be wrong.", "People born in a different generation provide important perspectives on controversial topics.", "I feel like I understand better why someone holds different beliefs on the controversial issue after communicating with them.", "I am interested in talking about controversial issues with people who hold different beliefs from me.", "After talking to people with different beliefs on controversial issues, I understand their perspective better.")
+q_wording<-c("People who hold different views on controversial issues are generally just as good as people who hold similar views as me.", "If I learn that someone holds different controversial views than I do, I become less interested in being friends with him/her.*", "Intelligent people may hold different views from me.", "I respect people who disagree with my views.", "Generally, intelligent people hold similar views as mine.", "I strongly prefer talking with people who share my views on controversial issues than people who do not share my views.", "I like finding out new information that differs what I already think is true.", "I question my own opinions, positions, and viewpoints because they could be wrong.", "People born in a different generation provide important perspectives on controversial topics.", "I feel like I understand better why someone holds different beliefs on the controversial issue after communicating with them.", "I am interested in talking about controversial issues with people who hold different beliefs from me.", "After talking to people with different beliefs on controversial issues, I understand their perspective better.")
 
 key.df<-as.data.frame(q_wording)
 
 rownames(key.df)<-q_labels
 names(key.df)<-"Question Wording"
-library(kableExtra)
+#library(kableExtra)
 key.df %>%
   kable(digits=3) %>%
   kable_styling()
@@ -272,7 +296,9 @@ key.df %>%
 
 ## Overall Results
 
-Below we have the results for each question aggregated over all sites. We also have descriptive statistics for these questions as well as the overall ideological distribution of the sample. 
+To examine whether participants showed improvement from Time 1 to Time 2, I matched their unique id numbers and plotted the mean score for all participants at each time point below. 
+
+
 
 ```{r plot, echo=FALSE, warning=FALSE}
 library(effsize)
@@ -307,7 +333,7 @@ scale_x_discrete(name="Before or After Event")+
 ylab("Score")+
 coord_cartesian(ylim = c(1, 100))+
 scale_fill_manual(name="Before or After Event", values=c("green4", "purple4"))+
-theme(text=element_text(size=16), panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+theme(text=element_text(size=20), panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
 panel.background = element_blank(), axis.line = element_line(colour = "black"))+
   scale_y_continuous(expand = c(0, 0), limits = c(0, 100)) 
 
@@ -326,15 +352,17 @@ scale_x_discrete(name="Before or After Event")+
 ylab("Score")+
 coord_cartesian(ylim = c(1, 100))+
 scale_fill_manual(name="Before or After Event", values=c("green4", "purple4"))+
-theme(text=element_text(size=16), panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+theme(text=element_text(size=20), panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
 panel.background = element_blank(), axis.line = element_line(colour = "black"))+
   scale_y_continuous(expand = c(0, 0), limits = c(0, 100)) 
 
 plot1
 
 ```
+<br><br>
+Overall, there was a positive effect where participants reported that they would become more interested in being friends with people holding different beliefs on controversial issues from them at time 2 relative to time 1. Unexpectedly, there was a small negative effect where participants reported a decrease in their belief that "People born in a different generation provide important perspectives on controversial topics." Responses to all other questions did not differ between time 1 and time 2.
+<br><br>
 
-Overall, the belief that "people who hold different views on controversial issues are generally just as good as people who hold similar views as me" increased post event. There were no other significant differences after the event. 
 
 ```{r table, echo=FALSE, warning=FALSE}
 
@@ -395,7 +423,7 @@ labels<-c("Like Disconfirming Info",
 rownames(dat.table)<-labels
 dat.table$Question<-NULL
 names(dat.table)<-c("Denver (Pre)", "Denver (Post)", "DMV (Pre)","DMV (Post)","Number of Omaha (Pre)", "Omaha (Post)")
-dat.table<-dat.table[1,c("Denver (Post)","DMV (Post)","Omaha (Post)")]
+dat.table<-dat.table[1,c("Denver (Pre)", "Denver (Post)", "DMV (Pre)","DMV (Post)","Number of Omaha (Pre)", "Omaha (Post)")]
 dat.table<-t(dat.table)
 colnames(dat.table)<-"Surveys Collected"
 ```
@@ -426,7 +454,7 @@ scale_x_discrete(name="Before or After Event")+
 ylab("Score")+
 coord_cartesian(ylim = c(1, 100))+
 scale_fill_manual(name="Before or After Event", values=c("green4", "purple4"))+
-theme(text=element_text(size=16), panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+theme(text=element_text(size=20), panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
 panel.background = element_blank(), axis.line = element_line(colour = "black"))+
   scale_y_continuous(expand = c(0, 0), limits = c(0, 100)) 
 
@@ -445,15 +473,18 @@ scale_x_discrete(name="Before or After Event")+
 ylab("Score")+
 coord_cartesian(ylim = c(1, 100))+
 scale_fill_manual(name="Before or After Event", values=c("green4", "purple4"))+
-theme(text=element_text(size=16), panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+theme(text=element_text(size=20), panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
 panel.background = element_blank(), axis.line = element_line(colour = "black"))+
   scale_y_continuous(expand = c(0, 0), limits = c(0, 100)) 
 
 plot1
 ```
 
-In the table below, we see that there were no pre-post differences in any of our measures.  
+<br><br>
+In the Omaha subsample, there was a positive effect where participants reported that they would become more interested in being friends with people holding different beliefs on controversial issues from them at time 2 relative to time 1. Unexpectedly, participants reported that they were less likely to question their own beliefs and respect people with different beliefs. Additionally, participants reported decreased understanding of why people hold different beliefs on controversial issues after communicating with them. Responses to all other questions did not differ between time 1 and time 2.
 
+All summary statistics are included in the table below.  
+<br><br>
 ```{r OMAHAtable, echo=FALSE, warning=FALSE}
 
 dat.omaha<-subset(by.site.new, location=="Omaha")
@@ -491,7 +522,7 @@ scale_x_discrete(name="Before or After Event")+
 ylab("Score")+
 coord_cartesian(ylim = c(1, 100))+
 scale_fill_manual(name="Before or After Event", values=c("green4", "purple4"))+
-theme(text=element_text(size=16), panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+theme(text=element_text(size=20), panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
 panel.background = element_blank(), axis.line = element_line(colour = "black"))+
   scale_y_continuous(expand = c(0, 0), limits = c(0, 100)) 
 
@@ -510,14 +541,18 @@ scale_x_discrete(name="Before or After Event")+
 ylab("Score")+
 coord_cartesian(ylim = c(1, 100))+
 scale_fill_manual(name="Before or After Event", values=c("green4", "purple4"))+
-theme(text=element_text(size=16), panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+theme(text=element_text(size=20), panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
 panel.background = element_blank(), axis.line = element_line(colour = "black"))+
   scale_y_continuous(expand = c(0, 0), limits = c(0, 100)) 
 
 plot1
 ```
 
-In the table below, we see that the belief that "people who hold different views on controversial issues are generally just as good as people who hold similar views as me" significantly increased from Time 1 to Time 2. 
+<br><br>
+There were no statistically significant differences from Time 1 to Time 2 on any of the questions in the DMV region.
+
+All summary statistics are included in the table below.
+<br><br>
 
 ```{r DMVtable, echo=FALSE, warning=FALSE}
 
@@ -556,7 +591,7 @@ scale_x_discrete(name="Before or After Event")+
 ylab("Score")+
 coord_cartesian(ylim = c(1, 100))+
 scale_fill_manual(name="Before or After Event", values=c("green4", "purple4"))+
-theme(text=element_text(size=16), panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+theme(text=element_text(size=20), panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
 panel.background = element_blank(), axis.line = element_line(colour = "black"))+
   scale_y_continuous(expand = c(0, 0), limits = c(0, 100)) 
 
@@ -575,14 +610,18 @@ scale_x_discrete(name="Before or After Event")+
 ylab("Score")+
 coord_cartesian(ylim = c(1, 100))+
 scale_fill_manual(name="Before or After Event", values=c("green4", "purple4"))+
-theme(text=element_text(size=16), panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+theme(text=element_text(size=20), panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
 panel.background = element_blank(), axis.line = element_line(colour = "black"))+
   scale_y_continuous(expand = c(0, 0), limits = c(0, 100)) 
 
 plot1
 ```
 
-In the table below, we see that the belief that "people who hold different views on controversial issues are generally just as good as people who hold similar views as me" significantly increased from Time 1 to Time 2.
+<br><br>
+In the Denver subsample, there was a positive effect where participants reported that they would become more interested in being friends with people holding different beliefs on controversial issues from them at time 2 relative to time 1. Unexpectedly, participants reported a slight increase in their liking for communicating with people who hold similar beliefs as them.Responses to all other questions did not differ between time 1 and time 2.
+
+All summary statistics are included in the table below.
+<br><br>
 
 ```{r dentable, echo=FALSE, warning=FALSE}
 
@@ -644,13 +683,13 @@ dat.table<-dat.table[,c("Question","Classroom_Pre", "Classroom_Post", "Community
 
 dat.table$Question<-NULL
 names(dat.table)<-c("Classroomn (Pre)", "Classroom (Post)", "Community - Nonstudent (Pre)","Community - Nonstudent (Post)","Community - Student (Pre)", "Community - Student(Post)")
-dat.table<-dat.table[1,c("Classroom (Post)", "Community - Nonstudent (Post)","Community - Student(Post)")]
+dat.table<-dat.table[1,c("Classroomn (Pre)", "Classroom (Post)", "Community - Nonstudent (Pre)","Community - Nonstudent (Post)","Community - Student (Pre)", "Community - Student(Post)")]
 dat.table<-t(dat.table)
 colnames(dat.table)<-"Surveys Collected"
 ```
 
 
-In the table below we have the number of respondents for which we have pre and post event data by area.
+In the table below we have the number of respondents for which we have pre and post event data by type of sample.
 
 ```{r survbreakdown, echo=FALSE, warning=FALSE}
 
@@ -677,7 +716,7 @@ scale_x_discrete(name="Before or After Event")+
 ylab("Score")+
 coord_cartesian(ylim = c(1, 100))+
 scale_fill_manual(name="Before or After Event", values=c("green4", "purple4"))+
-theme(text=element_text(size=16), panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+theme(text=element_text(size=20), panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
 panel.background = element_blank(), axis.line = element_line(colour = "black"))+
   scale_y_continuous(expand = c(0, 0), limits = c(0, 100)) 
 
@@ -696,14 +735,20 @@ scale_x_discrete(name="Before or After Event")+
 ylab("Score")+
 coord_cartesian(ylim = c(1, 100))+
 scale_fill_manual(name="Before or After Event", values=c("green4", "purple4"))+
-theme(text=element_text(size=16), panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+theme(text=element_text(size=20), panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
 panel.background = element_blank(), axis.line = element_line(colour = "black"))+
   scale_y_continuous(expand = c(0, 0), limits = c(0, 100)) 
 
 plot1
 ```
+<br><br>
 
 In the table below, we see that the belief that "people who hold different views on controversial issues are generally just as good as people who hold similar views as me" significantly increased from Time 1 to Time 2. 
+
+In the classroom subsample, there was a positive effect where participants reported that they would become more interested in being friends with people holding different beliefs on controversial issues from them at time 2 relative to time 1. Unexpectedly, participants reported a slight increase in their belief that people who share similar beliefs on controversial issues were smarter than people who held different beliefs on controversial beliefs. Responses to all other questions did not differ between time 1 and time 2.
+
+All summary statistics are included in the table below.
+<br><br>
 
 ```{r classtable, echo=FALSE, warning=FALSE}
 
@@ -738,7 +783,7 @@ scale_x_discrete(name="Before or After Event")+
 ylab("Score")+
 coord_cartesian(ylim = c(1, 100))+
 scale_fill_manual(name="Before or After Event", values=c("green4", "purple4"))+
-theme(text=element_text(size=16), panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+theme(text=element_text(size=20), panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
 panel.background = element_blank(), axis.line = element_line(colour = "black"))+
   scale_y_continuous(expand = c(0, 0), limits = c(0, 100)) 
 
@@ -757,14 +802,18 @@ scale_x_discrete(name="Before or After Event")+
 ylab("Score")+
 coord_cartesian(ylim = c(1, 100))+
 scale_fill_manual(name="Before or After Event", values=c("green4", "purple4"))+
-theme(text=element_text(size=16), panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+theme(text=element_text(size=20), panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
 panel.background = element_blank(), axis.line = element_line(colour = "black"))+
   scale_y_continuous(expand = c(0, 0), limits = c(0, 100)) 
 
 plot1
 ```
 
-In the table below, we see that there were no pre-post differences in any of our measures. 
+<br><br>
+In the community student subsample, there was a positive effect where participants reported that they would become more interested in being friends with people holding different beliefs on controversial issues from them at time 2 relative to time 1. Unexpectedly, participants reported more aversion to information that challenges their beliefs, a decreased likelihood of questioning their own beliefs, and a decreased perception that communicating with people who hold different beliefs improves their understanding of their beliefs. Responses to all other questions did not differ between time 1 and time 2.
+
+All summary statistics are included in the table below.
+<br><br>
 
 ```{r studtable, echo=FALSE, warning=FALSE}
 
@@ -799,7 +848,7 @@ scale_x_discrete(name="Before or After Event")+
 ylab("Score")+
 coord_cartesian(ylim = c(1, 100))+
 scale_fill_manual(name="Before or After Event", values=c("green4", "purple4"))+
-theme(text=element_text(size=16), panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+theme(text=element_text(size=20), panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
 panel.background = element_blank(), axis.line = element_line(colour = "black"))+
   scale_y_continuous(expand = c(0, 0), limits = c(0, 100)) 
 
@@ -818,14 +867,18 @@ scale_x_discrete(name="Before or After Event")+
 ylab("Score")+
 coord_cartesian(ylim = c(1, 100))+
 scale_fill_manual(name="Before or After Event", values=c("green4", "purple4"))+
-theme(text=element_text(size=16), panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+theme(text=element_text(size=20), panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
 panel.background = element_blank(), axis.line = element_line(colour = "black"))+
   scale_y_continuous(expand = c(0, 0), limits = c(0, 100)) 
 
 plot1
 ```
+<br><br>
 
-In the table below, we see that there were no pre-post differences in any of our measures. 
+In the community nonstudent subsample, there were two unexpected, negative effects. First, participants reported liking information than challenges their beliefs less at Time 2 relative to Time 1. Second, participants reported viewing people who held different beliefs as less smart at time 2 relative to time 1.Responses to all other questions did not differ between time 1 and time 2.
+
+All summary statistics are included in the table below.
+<br><br>
 
 ```{r nonstable, echo=FALSE, warning=FALSE}
 
@@ -887,7 +940,7 @@ dat.table<-dat.table[,c("Question","Assault Weapons_Pre", "Assault Weapons_Post"
 
 dat.table$Question<-NULL
 names(dat.table)<-c("Assault Weapons (Pre)", "Assault Weapons (Post)", "Compulsory Voting (Pre)","Compulsory Voting (Post)")
-dat.table<-dat.table[1,c("Assault Weapons (Post)", "Compulsory Voting (Post)")]
+dat.table<-dat.table[1,c("Assault Weapons (Pre)", "Assault Weapons (Post)", "Compulsory Voting (Pre)","Compulsory Voting (Post)")]
 dat.table<-t(dat.table)
 colnames(dat.table)<-"Surveys Collected"
 ```
@@ -920,7 +973,7 @@ scale_x_discrete(name="Before or After Event")+
 ylab("Score")+
 coord_cartesian(ylim = c(1, 100))+
 scale_fill_manual(name="Before or After Event", values=c("green4", "purple4"))+
-theme(text=element_text(size=16), panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+theme(text=element_text(size=20), panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
 panel.background = element_blank(), axis.line = element_line(colour = "black"))+
   scale_y_continuous(expand = c(0, 0), limits = c(0, 100)) 
 
@@ -939,14 +992,18 @@ scale_x_discrete(name="Before or After Event")+
 ylab("Score")+
 coord_cartesian(ylim = c(1, 100))+
 scale_fill_manual(name="Before or After Event", values=c("green4", "purple4"))+
-theme(text=element_text(size=16), panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+theme(text=element_text(size=20), panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
 panel.background = element_blank(), axis.line = element_line(colour = "black"))+
   scale_y_continuous(expand = c(0, 0), limits = c(0, 100)) 
 
 plot1
 ```
+<br><br>
 
-In the table below, we see that there were no pre-post differences in any of our measures. 
+In the assault weapons dialogues, no responses differed between time 1 and time 2.
+
+All summary statistics are included in the table below.
+<br><br>
 
 ```{r wepstable, echo=FALSE, warning=FALSE}
 
@@ -981,7 +1038,7 @@ scale_x_discrete(name="Before or After Event")+
 ylab("Score")+
 coord_cartesian(ylim = c(1, 100))+
 scale_fill_manual(name="Before or After Event", values=c("green4", "purple4"))+
-theme(text=element_text(size=16), panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+theme(text=element_text(size=20), panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
 panel.background = element_blank(), axis.line = element_line(colour = "black"))+
   scale_y_continuous(expand = c(0, 0), limits = c(0, 100)) 
 
@@ -1000,14 +1057,18 @@ scale_x_discrete(name="Before or After Event")+
 ylab("Score")+
 coord_cartesian(ylim = c(1, 100))+
 scale_fill_manual(name="Before or After Event", values=c("green4", "purple4"))+
-theme(text=element_text(size=16), panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+theme(text=element_text(size=20), panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
 panel.background = element_blank(), axis.line = element_line(colour = "black"))+
   scale_y_continuous(expand = c(0, 0), limits = c(0, 100)) 
 
 plot1
 ```
+<br><br>
 
-In the table below, we see that there were no pre-post differences in any of our measures. 
+In the assault weapons dialogues, no responses differed between time 1 and time 2.
+
+All summary statistics are included in the table below.
+<br><br>
 
 ```{r votetable, echo=FALSE, warning=FALSE}
 
